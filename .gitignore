@@ -1,0 +1,18 @@
+# Helm
+charts/*/charts/
+*.tgz
+
+# Terraform (if any app-specific infra is added later)
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store

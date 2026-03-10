@@ -1,0 +1,43 @@
+replicaCount: 1
+
+image:
+  repository: ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/customer-mfe
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 4202
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: customer-mfe.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: customer-mfe-tls
+      hosts:
+        - customer-mfe.example.com
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+healthCheck:
+  path: /healthz
+  port: 4202
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
