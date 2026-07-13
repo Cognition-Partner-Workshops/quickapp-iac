@@ -19,19 +19,34 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.service.port }}
+            - containerPort: {{ .Values.containerPort }}
               protocol: TCP
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.config.aspnetcoreEnvironment | quote }}
+            - name: ASPNETCORE_HTTP_PORTS
+              value: {{ .Values.containerPort | quote }}
+            - name: ConnectionStrings__DefaultConnection
+              value: "Host={{ .Values.config.database.host }};Port={{ .Values.config.database.port }};Database={{ .Values.config.database.name }};Username={{ .Values.config.database.username }};Password=$(DB_PASSWORD)"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.config.database.existingSecret }}
+                  key: {{ .Values.config.database.passwordKey }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           livenessProbe:
             httpGet:
-              path: {{ .Values.healthCheck.path }}
-              port: {{ .Values.healthCheck.port }}
-            initialDelaySeconds: 15
-            periodSeconds: 10
+              path: {{ .Values.healthCheck.liveness.path }}
+              port: {{ .Values.containerPort }}
+            initialDelaySeconds: {{ .Values.healthCheck.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.liveness.periodSeconds }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.healthCheck.path }}
-              port: {{ .Values.healthCheck.port }}
-            initialDelaySeconds: 5
-            periodSeconds: 5
+              path: {{ .Values.healthCheck.readiness.path }}
+              port: {{ .Values.containerPort }}
+            initialDelaySeconds: {{ .Values.healthCheck.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.readiness.periodSeconds }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

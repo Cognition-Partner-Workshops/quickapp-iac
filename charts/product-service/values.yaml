@@ -5,6 +5,9 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
+# Port the container listens on (matches ASPNETCORE_HTTP_PORTS in the image).
+containerPort: 8080
+
 service:
   type: ClusterIP
   port: 5004
@@ -32,9 +35,34 @@ resources:
     cpu: 500m
     memory: 256Mi
 
+# Liveness (/health) reports process health; readiness (/ready) reports
+# dependency (database) health. Both served on the container port.
 healthCheck:
-  path: /healthz
-  port: 5004
+  liveness:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  readiness:
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# Application configuration — externalized as environment variables.
+# No hostnames or credentials are hardcoded in the image; they come from here
+# (and, for secrets, from a Kubernetes Secret referenced below).
+config:
+  aspnetcoreEnvironment: Production
+  database:
+    host: postgresql
+    port: 5432
+    name: productdb
+    username: postgres
+    # Password is read from an existing Secret, never stored in values.
+    existingSecret: product-service-db
+    passwordKey: password
+
+# Extra free-form environment variables (name/value pairs).
+extraEnv: []
 
 autoscaling:
   enabled: false
