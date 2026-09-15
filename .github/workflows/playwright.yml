@@ -1,0 +1,56 @@
+name: Playwright smoke
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Helm lint
+        run: helm lint charts/*
+      - name: Helm template all environments
+        run: |
+          set -e
+          for chart in charts/*/; do
+            for env in dev staging prod; do
+              helm template "$chart" \
+                --values "$chart/values.yaml" \
+                --values "environments/$env/values.yaml" > /dev/null
+            done
+          done
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: helm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Install Playwright browsers
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+      - name: Typecheck
+        working-directory: e2e
+        run: npm run typecheck
+      - name: Run smoke tests (stub)
+        working-directory: e2e
+        run: npm run test:e2e
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 14
